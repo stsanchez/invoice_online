@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@200&display=swap" rel="stylesheet">
+    
+    <title>Presupuesto</title>
+    <link rel="icon" href="img/logo.jpeg" type="image/x-icon">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <!--contenido-->
+    <div id="container">
+
+        <button id="boton">Convertir a PDF</button>
+
+        <div id="formulario">
+            <header>
+                <div class="me">
+                    <p> Andres Belgionato</p>
+                    <p> CUIT: 20-28162233-2</p>
+                    <p> Direccion: Tandil 393, San Andres</p>
+                    <p>Email: andres_belgionato@hotmail.com</p>
+                    <p>Telefono: 115198248</p>
+                </div>
+
+                <img src="img/logo.jpeg" width="115px" style="float: left; z-index: 10;" id="imagen">
+            </header>
+
+            <div style="display: flex;">
+                <h4>Fecha:</h4>
+                <h4 id="fechaActual"></h4>
+            </div>
+
+            <h1>ORDEN DE TRABAJO</h1>
+
+            <!-- Formulario de datos del cliente -->
+            <div id="form">
+                <table>
+                    <tr>
+                        <td class="sinborde w100">
+                            <h4>Válido hasta:</h4>
+                        </td>
+                        <td class="sinborde"><input class="myInput" type="text" style="width: 167px;"></td>
+                    </tr>
+                    <tr>
+                        <td class="sinborde w100">Cliente:</td>
+                        <td class="sinborde"><input class="myInput" type="text"></td>
+                    </tr>
+                    <tr>
+                        <td class="sinborde">Drección:</td>
+                        <td class="sinborde"><input class="myInput" type="text"></td>
+                    </tr>
+                    <tr>
+                        <td class="sinborde">Teléfono:</td>
+                        <td class="sinborde"><input class="myInput" type="text"></td>
+                    </tr>
+                    <tr>
+                        <td class="sinborde">Email:</td>
+                        <td class="sinborde"><input class="myInput" type="text"></td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- Campo de texto grande -->
+            <div>
+                <h3>Detalles:</h3>
+                <textarea id="campoGrande" style="width: 100%; height: 300px; resize: none;" placeholder="Escribe aquí los detalles del presupuesto..."></textarea>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>*Documento no válido como factura</p>
+    </footer>
+
+</body>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+<script src="js/html2canvas.min.js"></script>
+<script src="js/main.js"></script>
+
+</html>
