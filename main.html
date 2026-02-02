@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@200&display=swap" rel="stylesheet">
-    
+
     <title>Presupuesto</title>
     <link rel="icon" href="img/logo.jpeg" type="image/x-icon">
     <link rel="stylesheet" href="css/style.css">
@@ -42,7 +42,7 @@
                 <h4 id="fechaActual"></h4>
             </div>
 
-            <h1 >PRESUPUESTO</h1>
+            <h1>PRESUPUESTO</h1>
 
             <!--tablo datos-->
             <div id="form">
@@ -76,6 +76,7 @@
             <div>
                 <table class="tablaCliente">
                     <thead>
+                        <th data-html2canvas-ignore="true" style="width: 40px;">Mic</th>
                         <th>Descripcion</th>
                         <th>Cantidad</th>
                         <th>Precio <br> unitario</th>
@@ -83,7 +84,17 @@
                     </thead>
                     <tbody id="miTabla">
                         <tr>
-                            <td width='70%' contenteditable></td>
+                            <td data-html2canvas-ignore="true" class="mic-cell">
+                                <button class="mic-btn" onclick="handleVoiceRecord(this)">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                        <path
+                                            d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+                                        <path
+                                            d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+                                    </svg>
+                                </button>
+                            </td>
+                            <td width='60%' contenteditable></td>
                             <td width='10%' class="amount" contenteditable></td>
                             <td width='3%' class="rate" contenteditable></td>
                             <td class="sum"></td>
@@ -91,7 +102,7 @@
                     </tbody>
                     <tbody id="trTotal">
                         <tr>
-                            <td colspan="4" class="b-b-0">
+                            <td colspan="5" class="b-b-0">
                                 <p id="total"><strong>TOTAL: </strong><span id="total_price">0</span> </p>
                             </td>
                         </tr>
@@ -113,6 +124,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
 <script src="js/html2canvas.min.js"></script>
-<script src="js/main.js"></script>
+<script src="js/config.js"></script>
+<script src="js/main.js?v=7"></script>
 
 </html>
