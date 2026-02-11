@@ -1,230 +1,502 @@
-  /* Estilos para dispositivos móviles con ancho máximo de 600px */
-@media screen and (max-width: 600px){
-  #formulario{
-    margin: 10px!important;
-  }
-
-  .me {
-    float: none;
-  }
-
-  #infoCliente input {
-    margin-bottom: 8px;
-    margin-top: 8px;
-    height: 26px;
-  }
-
-  #boton {
-    margin-left: 10px!important;
-  }
-
+:root {
+  --primary-color: #a93226;
+  /* Sober Red */
+  --primary-hover: #922b21;
+  --secondary-color: #64748b;
+  --accent-color: #ef4444;
+  /* Clean Red for accents/alerts */
+  --bg-color: #f8fafc;
+  --card-bg: #ffffff;
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --border-color: #e2e8f0;
+  --header-bg: #1e293b;
+  /* Dark header for contrast */
+  --header-text: #ffffff;
+  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --radius: 0.5rem;
 }
 
-@media screen and (min-width: 600px){
-  input {
-  width: 100%;
-  }
+* {
+  box-sizing: border-box;
 }
 
-/* generales */
-
-html {
-  font-family: 'Roboto', sans-serif;
+body {
+  font-family: var(--font-family);
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  margin: 0;
+  padding: 0;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
-#container{
-  max-width: 1280px !important;
+/* Layout */
+#container {
+  max-width: 1000px;
+  margin: 2rem auto;
+  padding: 0 1rem;
 }
-#formulario{
-  margin: 30px;
+
+#formulario {
+  background-color: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  /* For header radius */
+  margin-bottom: 2rem;
 }
 
 header {
-  background-color: rgb(196, 28, 28);
-  padding: 2px;
- 
+  background-color: var(--primary-color);
+  color: var(--header-text);
+  padding: 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
+/* Header Content */
 .me {
-  height: 130px;
-  color: antiquewhite;
-  vertical-align: top;
-  display: inline-block;
-  font-size: 1rem;
-  padding: 0 1rem;
-  min-height: 1px;  
-  text-align: left;
-  
-
+  color: var(--header-text);
+  font-size: 0.9rem;
+  line-height: 1.6;
 }
 
-p{
-  margin: 5px;  
+.me p {
+  margin: 0;
+  opacity: 0.9;
 }
 
-.tablaCliente{
-  margin-top: 20px;
-}
-
-#formulario h1 {
-  font-size: 50px;
-}
-
-#infoCliente input {
-  margin-bottom: 10px;
-  margin-top: 10px;
-}
-
-input {
-  border: 1px solid #ccc;
-  transition: border-color 0.3s ease-in-out;
-  height: 2.2em;
-  margin-top: 2px;
-  margin-bottom: 2px;
-  font-size: 14px;
-}
-  
-#form input.has-value {
-  border-color: transparent;
-  display: block;
-}
-
-.sinborde {
-  text-align: left!important;
-  padding: 2px!important;
-  border-bottom: 0px!important;
-  word-wrap: break-word;
-}
-
-.w100 {
-  width: 100px;
-}
-
-table {
-  background-color: #fff;
-  border-collapse: collapse;
-  width: 100%;
-  margin-bottom: 20px;
-    
-}
-  
-table th, table td {
-  text-align: center;
-  padding: 10px;
-  border-bottom: 1px solid #ccc;
-  max-width: 200px; /* Ancho máximo de la celda */
-  word-wrap: break-word;
-  min-height: 25px;
-}
-  
-table th {
-  background-color: #f5f5f5;
-}
-
-  
-#agregarFila {
-  background-color:  rgb(196, 28, 28);
-  border: none;
-  color: #fff;
-  padding: 5px 10px;
-  font-family: 'Arial', sans-serif;
-  font-size: 14px;
-  cursor: pointer;
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.2); /* Sombra al botón de agregar fila */
-}
-
-#boton {
-  text-align: center;
+.me p:first-child {
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
 }
 
 #imagen {
-  max-width: 100%;
-  height: 130px;
+  width: 100px;
+  /* Specific size */
+  height: auto;
+  border-radius: var(--radius);
+  background: white;
+  /* Fallback if transparent png needs contrast */
+  padding: 0.25rem;
+}
+
+/* Main Content Area */
+#form {
+  padding: 2rem;
+}
+
+h1 {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 1.5rem 0;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 1rem;
+}
+
+h4 {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* Date Display */
+.date-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 2rem 0;
+  justify-content: flex-end;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+#fechaActual {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+
+/* Form Tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.5rem;
+}
+
+/* Client Info Table */
+/* This table structure in HTML is a bit odd (td inside td?), 
+   but targeting based on provided structure */
+.sinborde {
+  border: none !important;
+  padding: 0.5rem 0 !important;
+  text-align: left !important;
+}
+
+.w100 {
+  width: 120px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* Inputs */
+input[type="text"] {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 0.95rem;
+  transition: all 0.2s;
+  background-color: #fff;
+}
+
+input[type="text"]:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+input.myInput {
+  background-color: #f8fafc;
+  /* Slightly distinct for read-only feel if needed, but keeping editable */
+}
+
+
+/* Main Data Table */
+.tablaCliente {
+  width: 100%;
+  margin-top: 1rem;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+.tablaCliente th {
+  background-color: #f1f5f9;
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.tablaCliente td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+}
+
+.tablaCliente tr:last-child td {
+  border-bottom: none;
+}
+
+/* Currency/Numbers alignment */
+.amount,
+.rate,
+.sum,
+#total_price {
+  text-align: right;
+  font-family: 'Monaco', 'Consolas', monospace;
+  /* Monospaced specifically for numbers alignment */
+  font-size: 0.9rem;
+}
+
+/* Total Section */
+#trTotal td {
+  background-color: #f8fafc;
+  padding: 1.5rem;
 }
 
 #total {
-  display: inline-flex;
-  color: rgb(196, 28, 28);
-  float: center;
-  text-align: center;
+  text-align: right;
+  font-size: 1.25rem;
+  margin: 0;
+  color: var(--text-primary);
 }
 
 #total_price {
-  font-weight: bold;
-  padding-left: 3px;
+  color: var(--text-primary);
+  font-weight: 700;
+  font-size: 1.5rem;
+  margin-left: 0.5rem;
 }
 
-.b-b-0 {
-  padding-top: 20px;
-  border-bottom: 0px!important;
+/* Image Appendix Styles */
+#image-appendix {
+  margin-top: 50px;
+  page-break-before: always;
+  /* Force new page in PDF */
+  break-before: page;
+  display: none;
+  /* Hidden by default until images are added */
+  flex-direction: column;
 }
 
-body h1 {
-  font-size: 30px;
+#image-appendix.has-images {
+  display: flex;
+}
+
+#image-appendix h3 {
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 10px;
+  margin-bottom: 20px;
+}
+
+.appendix-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  /* 3 images per row */
+  gap: 20px;
+}
+
+.appendix-item {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 10px;
+  background: #fff;
   text-align: center;
-  margin-top: 0px;
 }
 
-body h4 {
-  text-align: left;
+.appendix-item img {
+  width: 100%;
+  height: 200px;
+  /* Fixed height */
+  object-fit: cover;
+  /* Maintain aspect ratio filling box */
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+}
+
+.appendix-item p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* Clip Button */
+.clip-btn:hover {
+  background-color: #eff6ff;
+  color: #3b82f6;
+}
+
+/* Buttons */
+button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  font-weight: 500;
+  font-size: 0.95rem;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--font-family);
+}
+
+/* Form Footer */
+.form-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--border-color);
+}
+
+.actions {
+  display: block;
+  /* Reset flex */
+  margin: 0;
+  padding: 0;
 }
 
 #boton {
-  background-color:  rgb(196, 28, 28);
-  border: none;
-  color: #fff;
-  padding: 10px 15px;
-  font-family: 'Arial', sans-serif;
-  font-size: 16px;
+  /* Convert PDF button */
+  background-color: var(--primary-color);
+  color: white;
+  box-shadow: var(--shadow-sm);
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  border-radius: var(--radius);
+}
+
+#agregarFila {
+  background-color: white;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  margin-top: 1rem;
+  width: 100%;
+  /* Full width for add row */
+  padding: 0.75rem;
+  border-style: dashed;
+}
+
+#agregarFila:hover {
+  background-color: #f8fafc;
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+/* Logout Button */
+#logout-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background-color: white;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  border-radius: var(--radius);
   cursor: pointer;
-  border-radius: 14px;
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
-  margin-left: 30px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: var(--shadow-sm);
+  z-index: 1000;
 }
 
-.mb-0 {
-  margin-bottom: 0px;
+#logout-btn:hover {
+  background-color: #f1f5f9;
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-md);
 }
 
-/* Microphone Button Styles */
+/* Microphone Button */
 .mic-cell {
+  width: 70px;
+  /* Increased to fit two buttons */
   text-align: center;
   vertical-align: middle;
 }
 
-.mic-btn {
+.cell-actions {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+}
+
+.mic-btn,
+.magic-btn,
+.clip-btn {
   background: none;
   border: none;
   cursor: pointer;
-  color: #555;
+  color: #64748b;
+  /* secondary color */
   border-radius: 50%;
   padding: 5px;
   transition: all 0.3s ease;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 28px;
+  height: 28px;
 }
 
 .mic-btn:hover {
-  background-color: #f0f0f0;
-  color: rgb(196, 28, 28);
+  background-color: #f1f5f9;
+  color: var(--primary-color);
+}
+
+.magic-btn:hover {
+  background-color: #f0fdf4;
+  /* Light green for magic */
+  color: #10b981;
+  /* Emerald green */
 }
 
 .mic-btn.recording {
-  color: rgb(196, 28, 28);
-  background-color: #ffd6d6;
+  color: #ef4444;
+  background-color: #fee2e2;
   animation: pulse 1.5s infinite;
 }
 
-.mic-btn.processing {
-  color: #ff9800; 
+.mic-btn.processing,
+.magic-btn.processing {
+  color: #f59e0b;
   cursor: wait;
+  animation: spin 1s linear infinite;
 }
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 
 @keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(196, 28, 28, 0.4); }
-  70% { box-shadow: 0 0 0 10px rgba(196, 28, 28, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(196, 28, 28, 0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+
+  70% {
+    box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
 }
 
 
+/* Responsive */
+@media screen and (max-width: 640px) {
+  header {
+    flex-direction: column;
+    text-align: center;
+    gap: 1rem;
+  }
+
+  .me {
+    text-align: center;
+  }
+
+  #imagen {
+    float: none !important;
+    /* Override inline styles */
+    margin: 0 auto;
+    display: block;
+  }
+
+  .tablaCliente {
+    display: block;
+    overflow-x: auto;
+  }
+
+  input[type="text"] {
+    font-size: 16px;
+    /* Prevent zoom on iOS */
+  }
+}
