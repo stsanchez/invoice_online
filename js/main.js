@@ -114,7 +114,8 @@ window.processImage = function (input) {
       img.src = e.target.result;
 
       const p = document.createElement('p');
-      p.innerText = `Fila ${rowIndex}: ${desc}`;
+      const shortDesc = desc.length > 30 ? desc.substring(0, 30) + '...' : desc;
+      p.innerText = `Referencia: Línea ${rowIndex}${shortDesc ? ' - ' + shortDesc : ''}`;
 
       itemDiv.appendChild(img);
       itemDiv.appendChild(p);
