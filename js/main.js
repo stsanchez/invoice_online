@@ -134,9 +134,24 @@ agregarFilaButton.addEventListener('click', function () {
   agregarNuevaFila();
 });
 
-// Voice to Text Feature (OpenAI)
+// Voice to Text Feature (Gemini)
 let mediaRecorder;
 let audioChunks = [];
+
+// Chrome graba webm/opus, Safari mp4. Elegimos el primero que soporte el
+// navegador de esta lista, todos formatos que Gemini acepta.
+function pickAudioMimeType() {
+  const candidates = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/ogg;codecs=opus',
+    'audio/mp4'
+  ];
+  for (const type of candidates) {
+    if (window.MediaRecorder && MediaRecorder.isTypeSupported(type)) return type;
+  }
+  return '';
+}
 
 window.handleVoiceRecord = async function (btn) {
   const row = btn.closest('tr');
@@ -153,7 +168,8 @@ window.handleVoiceRecord = async function (btn) {
 
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorder = new MediaRecorder(stream);
+    const mimeType = pickAudioMimeType();
+    mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
     audioChunks = [];
 
     mediaRecorder.ondataavailable = event => {
@@ -161,9 +177,9 @@ window.handleVoiceRecord = async function (btn) {
     };
 
     mediaRecorder.onstop = async () => {
-      // Create a File object instead of Blob for OpenAI API compatibility
-      const audioFile = new File(audioChunks, "recording.webm", { type: 'audio/webm' });
-      await processAudioWithBackend(audioFile, descriptionCell, btn);
+      const recordedType = mediaRecorder.mimeType || mimeType || 'audio/webm';
+      const audioBlob = new Blob(audioChunks, { type: recordedType });
+      await processAudioWithBackend(audioBlob, recordedType, descriptionCell, btn);
 
       stream.getTracks().forEach(track => track.stop());
     };
@@ -177,15 +193,15 @@ window.handleVoiceRecord = async function (btn) {
   }
 };
 
-async function processAudioWithBackend(audioFile, targetCell, btn) {
+async function processAudioWithBackend(audioBlob, mimeType, targetCell, btn) {
   try {
     // Initial feedback
     const originalText = targetCell.innerText;
     targetCell.innerText = "Escuchando...";
 
-    // Convert Blob/File to Base64
+    // Convert Blob to Base64
     const reader = new FileReader();
-    reader.readAsDataURL(audioFile);
+    reader.readAsDataURL(audioBlob);
 
     reader.onloadend = async function () {
       const base64String = reader.result.split(',')[1];
@@ -196,13 +212,13 @@ async function processAudioWithBackend(audioFile, targetCell, btn) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             fileBase64: base64String,
-            filename: audioFile.name
+            mimeType: mimeType
           })
         });
 
         if (!response.ok) {
           const err = await response.json().catch(() => ({}));
-          throw new Error(`Server Error: ${err.error || response.statusText}`);
+          throw new Error(err.error || response.statusText);
         }
 
         const data = await response.json();
@@ -215,7 +231,7 @@ async function processAudioWithBackend(audioFile, targetCell, btn) {
         }
       } catch (error) {
         console.error("Backend Error:", error);
-        alert(`Error: ${error.message}`);
+        alert(`No se pudo procesar el audio.\n\n${error.message}`);
         targetCell.innerText = originalText;
       } finally {
         btn.classList.remove('processing');
@@ -248,16 +264,16 @@ window.handleMagicText = async function (btn) {
       body: JSON.stringify({ text: textToImprove })
     });
 
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
 
     if (response.ok && data.text) {
       descriptionCell.innerText = data.text;
     } else {
-      alert("No se pudo mejorar el texto.");
+      throw new Error(data.error || response.statusText);
     }
   } catch (error) {
     console.error("Error enhancing text:", error);
-    alert("Error al conectar con la IA.");
+    alert(`No se pudo mejorar el texto.\n\n${error.message}`);
   } finally {
     btn.classList.remove('processing');
   }

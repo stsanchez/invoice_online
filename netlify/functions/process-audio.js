@@ -1,13 +1,12 @@
-const axios = require('axios');
-const FormData = require('form-data');
+const { audioToText, GeminiError } = require('./lib/gemini');
 
-exports.handler = async function (event, context) {
+exports.handler = async function (event) {
     if (event.httpMethod !== "POST") {
         return { statusCode: 405, body: "Method Not Allowed" };
     }
 
     try {
-        const { fileBase64, filename } = JSON.parse(event.body);
+        const { fileBase64, mimeType } = JSON.parse(event.body);
 
         if (!fileBase64) {
             return {
@@ -16,43 +15,16 @@ exports.handler = async function (event, context) {
             };
         }
 
-        const apiKey = process.env.OPENAI_API_KEY;
-        if (!apiKey) {
-            return {
-                statusCode: 500,
-                body: JSON.stringify({ error: 'La API Key de OpenAI no está configurada.' })
-            };
-        }
-
-        // Convert Base64 to Buffer
-        const buffer = Buffer.from(fileBase64, 'base64');
-
-        const form = new FormData();
-        form.append('file', buffer, { filename: filename || 'audio.webm', contentType: 'audio/webm' });
-        form.append('model', 'whisper-1');
-
-        const whisperResponse = await axios.post('https://api.openai.com/v1/audio/transcriptions', form, {
-            headers: {
-                ...form.getHeaders(),
-                'Authorization': `Bearer ${apiKey}`
-            }
-        });
-
-        const transcribedText = whisperResponse.data.text;
-
         return {
             statusCode: 200,
-            body: JSON.stringify({ text: transcribedText })
+            body: JSON.stringify({ text: await audioToText(fileBase64, mimeType) })
         };
 
     } catch (error) {
-        console.error('Error procesando audio:', error.response ? error.response.data : error.message);
+        console.error('Error procesando audio:', error.message);
         return {
-            statusCode: 500,
-            body: JSON.stringify({
-                error: 'Error al procesar el audio.',
-                details: error.response ? error.response.data : error.message
-            })
+            statusCode: error instanceof GeminiError ? error.status : 500,
+            body: JSON.stringify({ error: error.message })
         };
     }
 };

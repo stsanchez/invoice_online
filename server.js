@@ -1,11 +1,11 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const multer = require('multer');
-const axios = require('axios');
-const fs = require('fs');
-const FormData = require('form-data');
 const path = require('path');
+
+// Mismo núcleo que usan las Netlify Functions, para que local y producción
+// no puedan divergir.
+const { improveText, audioToText, GeminiError } = require('./netlify/functions/lib/gemini');
 
 // Cargar variables de entorno
 dotenv.config();
@@ -15,13 +15,16 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
-app.use(express.json());
-
-// Configuración de Multer para manejar archivos (en memoria)
-const upload = multer({ storage: multer.memoryStorage() });
+// El audio viaja en base64 dentro del JSON, así que el límite por defecto (100kb) no alcanza.
+app.use(express.json({ limit: '25mb' }));
 
 // Servir archivos estáticos (HTML, CSS, JS) desde la raíz del proyecto
 app.use(express.static(__dirname));
+
+function fail(res, error, contexto) {
+    console.error(`${contexto}:`, error.message);
+    res.status(error instanceof GeminiError ? error.status : 500).json({ error: error.message });
+}
 
 // Endpoint para login
 app.post('/api/login', (req, res) => {
@@ -41,43 +44,16 @@ app.post('/api/login', (req, res) => {
     }
 });
 
-// Endpoint para procesar audio con OpenAI (Solo Transcripción)
-app.post('/api/process-audio', upload.single('file'), async (req, res) => {
+// Audio -> texto redactado (una sola llamada a Gemini)
+app.post('/api/process-audio', async (req, res) => {
     try {
-        if (!req.file) {
-            return res.status(400).json({ error: 'No se envió ningún archivo de audio.' });
+        const { fileBase64, mimeType } = req.body;
+        if (!fileBase64) {
+            return res.status(400).json({ error: 'No se envió base64 del archivo.' });
         }
-
-        const apiKey = process.env.OPENAI_API_KEY;
-        if (!apiKey) {
-            return res.status(500).json({ error: 'La API Key de OpenAI no está configurada en el servidor.' });
-        }
-
-        // Transcripción con Whisper
-        const buffer = req.file.buffer;
-        const filename = req.file.originalname || 'audio.webm';
-
-        const form = new FormData();
-        form.append('file', buffer, { filename: filename, contentType: req.file.mimetype });
-        form.append('model', 'whisper-1');
-
-        const whisperResponse = await axios.post('https://api.openai.com/v1/audio/transcriptions', form, {
-            headers: {
-                ...form.getHeaders(),
-                'Authorization': `Bearer ${apiKey}`
-            }
-        });
-
-        const transcribedText = whisperResponse.data.text;
-        console.log("Transcription:", transcribedText);
-        res.json({ text: transcribedText });
-
+        res.json({ text: await audioToText(fileBase64, mimeType) });
     } catch (error) {
-        console.error('Error procesando audio:', error.response ? error.response.data : error.message);
-        res.status(500).json({
-            error: 'Error al procesar el audio.',
-            details: error.response ? error.response.data : error.message
-        });
+        fail(res, error, 'Error procesando audio');
     }
 });
 
@@ -85,53 +61,12 @@ app.post('/api/process-audio', upload.single('file'), async (req, res) => {
 app.post('/api/improve-text', async (req, res) => {
     try {
         const { text } = req.body;
-        const apiKey = process.env.OPENAI_API_KEY;
-
-        if (!text) {
+        if (!text || !text.trim()) {
             return res.status(400).json({ error: 'No se envió texto para mejorar.' });
         }
-
-        const chatPayload = {
-            model: "gpt-4o",
-            messages: [
-                {
-                    role: "system",
-                    content: "Eres un asistente experto en redacción técnica y profesional para presupuestos y facturas. \n" +
-                        "TU TAREA: Reescribir el texto proporcionado para que suene profesional, técnico y conciso.\n" +
-                        "REGLAS:\n" +
-                        "1. Mantén el significado original pero usa vocabulario más formal.\n" +
-                        "2. Corrige ortografía y gramática.\n" +
-                        "3. Elimina muletillas o lenguaje coloquial.\n" +
-                        "4. Devuelve SOLAMENTE el texto mejorado, sin introducciones ni explicaciones."
-                },
-                {
-                    role: "user",
-                    content: text
-                }
-            ]
-        };
-
-        const gptResponse = await axios.post('https://api.openai.com/v1/chat/completions', chatPayload, {
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            }
-        });
-
-        const finalText = gptResponse.data.choices?.[0]?.message?.content?.trim();
-
-        if (finalText) {
-            res.json({ text: finalText });
-        } else {
-            res.status(500).json({ error: 'No se recibió respuesta de la IA.' });
-        }
-
+        res.json({ text: await improveText(text) });
     } catch (error) {
-        console.error('Error mejorando texto:', error.response ? error.response.data : error.message);
-        res.status(500).json({
-            error: 'Error al mejorar el texto.',
-            details: error.response ? error.response.data : error.message
-        });
+        fail(res, error, 'Error mejorando texto');
     }
 });
 
