@@ -16,123 +16,189 @@ function mostrarFechaActual() {
 mostrarFechaActual();
 
 // --- Generación del PDF ---------------------------------------------------
-// jsPDF.html() rebana el render en alturas fijas sin mirar el contenido, así
-// que partía filas e imágenes al medio. Acá renderizamos una sola vez y
-// elegimos los cortes: nunca dentro de un bloque que deba quedar entero.
+// El cuerpo se rasteriza con html2canvas y se reparte en páginas cortando solo
+// entre filas. El anexo NO: se dibuja nativo en jsPDF, foto por foto, porque
+// medir en el DOM y cortar sobre el canvas no daba coordenadas exactas y
+// terminaba partiendo tarjetas al medio.
 
 const PDF = { pageW: 210, pageH: 297, margin: 10 };
 const PDF_SCALE = 2;
 
-// Bloques que no se parten. Si uno no entra en lo que queda de página, se baja
-// entero a la siguiente.
-const BLOQUES_ATOMICOS = [
-  'header',
-  '#form',
-  '.tablaCliente thead',
-  '.tablaCliente tbody tr',
-  '#image-appendix h3',
-  '.appendix-item'
-];
+// Anexo: grilla de 3 columnas, medidas en mm.
+const ANEXO = { cols: 3, gap: 5, altoFoto: 45, altoPie: 9, padding: 2 };
 
-function medirBloques(source, scale) {
-  const base = source.getBoundingClientRect().top;
+// Bloques del cuerpo que no se parten.
+const BLOQUES_ATOMICOS = ['header', '#form', '.tablaCliente thead', '.tablaCliente tbody tr'];
+
+// Se mide sobre el clon que html2canvas rasteriza, no sobre el DOM vivo: el
+// clon no siempre tiene el mismo alto (difiere en el sobrante final), y medir
+// en el lugar equivocado corre los cortes y parte filas al medio.
+function medirBloques(el) {
+  const base = el.getBoundingClientRect();
   const rangos = [];
-
-  source.querySelectorAll(BLOQUES_ATOMICOS.join(',')).forEach(el => {
-    const r = el.getBoundingClientRect();
-    if (r.height <= 0) return;
-    rangos.push({ top: (r.top - base) * scale, bottom: (r.bottom - base) * scale });
+  el.querySelectorAll(BLOQUES_ATOMICOS.join(',')).forEach(b => {
+    const r = b.getBoundingClientRect();
+    if (r.height > 0) rangos.push({ top: r.top - base.top, bottom: r.bottom - base.top });
   });
-
-  // El anexo arranca en página propia, como pedía el CSS original
-  // (page-break-before, que html2canvas no interpreta).
-  const cortesForzados = [];
-  const anexo = source.querySelector('#image-appendix.has-images');
-  if (anexo) {
-    const r = anexo.getBoundingClientRect();
-    cortesForzados.push((r.top - base) * scale);
-  }
-
-  return { rangos, cortesForzados };
+  return { rangos, ancho: base.width };
 }
 
-// Dónde terminar una página que empieza en `desde` y no puede pasar de `limite`.
-function buscarCorte(desde, limite, alturaTotal, rangos, cortesForzados) {
-  // Los cortes forzados se evaluan primero: aunque todo lo que queda entre en
-  // una pagina, el anexo tiene que empezar en la suya.
-  const forzado = cortesForzados.find(c => c > desde + 1 && c <= limite);
-  if (forzado) return forzado;
-
+// Dónde termina una página que empieza en `desde` y no puede pasar de `limite`.
+function buscarCorte(desde, limite, alturaTotal, rangos) {
   if (limite >= alturaTotal) return alturaTotal;
-
-  // ¿Hay un bloque justo encima de la línea de corte?
   const partido = rangos.find(r => r.top < limite && r.bottom > limite);
   if (!partido) return limite;
-
-  // Si el bloque entero cabe en una página, lo bajamos completo a la siguiente.
-  // Si es más alto que una página no hay nada que hacer: se parte igual.
+  // Si el bloque entero cabe en una página lo bajamos completo; si es más alto
+  // que una página se parte igual, porque no hay alternativa.
   return partido.top > desde + 1 ? partido.top : limite;
 }
 
-async function converHTMLFileToPDF() {
-  const { jsPDF } = window.jspdf;
-  const source = document.querySelector('#formulario');
+function rebanar(canvas, desde, hasta) {
+  const recorte = document.createElement('canvas');
+  recorte.width = canvas.width;
+  recorte.height = hasta - desde;
+  const ctx = recorte.getContext('2d');
+  ctx.fillStyle = '#ffffff';                       // sin esto lo transparente sale negro
+  ctx.fillRect(0, 0, recorte.width, recorte.height);
+  ctx.drawImage(canvas, 0, desde, canvas.width, recorte.height, 0, 0, canvas.width, recorte.height);
+  return recorte.toDataURL('image/jpeg', 0.92);
+}
 
-  const anchoUtil = PDF.pageW - PDF.margin * 2;
-  const altoUtil = PDF.pageH - PDF.margin * 2;
+// Recorta la foto al recuadro manteniendo proporción, como el object-fit: cover
+// de la pantalla, y la devuelve lista para jsPDF.
+function recortarCover(img, anchoPx, altoPx) {
+  const lienzo = document.createElement('canvas');
+  lienzo.width = anchoPx;
+  lienzo.height = altoPx;
+  const ctx = lienzo.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, anchoPx, altoPx);
 
-  const rectSource = source.getBoundingClientRect();
-  if (!rectSource.width) throw new Error('El formulario no tiene ancho visible.');
+  const escala = Math.max(anchoPx / img.naturalWidth, altoPx / img.naturalHeight);
+  const w = img.naturalWidth * escala;
+  const h = img.naturalHeight * escala;
+  ctx.drawImage(img, (anchoPx - w) / 2, (altoPx - h) / 2, w, h);
+  return lienzo.toDataURL('image/jpeg', 0.92);
+}
 
+function cargarImagen(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('No se pudo leer una imagen del anexo.'));
+    img.src = src;
+  });
+}
+
+async function dibujarCuerpo(doc, source, anchoUtil, altoUtil) {
+  const rect = source.getBoundingClientRect();
+  if (!rect.width) throw new Error('El formulario no tiene ancho visible.');
+
+  let medido = null;
   const canvas = await html2canvas(source, {
     scale: PDF_SCALE,
     useCORS: true,
-    backgroundColor: '#ffffff'
+    backgroundColor: '#ffffff',
+    onclone: (doc, el) => { medido = medirBloques(el); }
   });
 
-  // La escala real la derivamos del canvas en vez de asumir PDF_SCALE:
-  // html2canvas redondea, y si difiere aunque sea un poco las posiciones de
-  // los bloques quedan corridas respecto del render y los cortes caen mal.
-  const escala = canvas.width / rectSource.width;
+  // Si onclone no corriera, medimos el DOM vivo antes que quedarnos sin cortes.
+  if (!medido) medido = medirBloques(source);
+
+  const escala = medido.ancho ? canvas.width / medido.ancho : PDF_SCALE;
+  const rangos = medido.rangos.map(r => ({ top: r.top * escala, bottom: r.bottom * escala }));
 
   const pxPorMm = canvas.width / anchoUtil;
   const altoPaginaPx = altoUtil * pxPorMm;
   if (!(altoPaginaPx > 0)) throw new Error('No se pudo calcular el alto de página.');
 
-  const { rangos, cortesForzados } = medirBloques(source, escala);
-
-  // Repartir el alto total en páginas, cortando solo en lugares seguros.
-  const paginas = [];
   let y = 0;
+  let primera = true;
   while (y < canvas.height - 1) {
-    const fin = buscarCorte(y, y + altoPaginaPx, canvas.height, rangos, cortesForzados);
-    if (fin <= y) { paginas.push([y, canvas.height]); break; }  // red de seguridad
-    paginas.push([y, fin]);
+    let fin = buscarCorte(y, y + altoPaginaPx, canvas.height, rangos);
+    if (fin <= y) fin = canvas.height;                       // red de seguridad
+    if (!primera) doc.addPage();
+    doc.addImage(rebanar(canvas, y, fin), 'JPEG', PDF.margin, PDF.margin, anchoUtil, (fin - y) / pxPorMm);
+    primera = false;
     y = fin;
   }
+}
 
+async function dibujarAnexo(doc, items, anchoUtil) {
+  doc.addPage();
+
+  let y = PDF.margin;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.setTextColor(30, 41, 59);
+  doc.text('Anexo de Imágenes', PDF.margin, y + 5);
+  y += 8;
+  doc.setDrawColor(226, 232, 240);
+  doc.line(PDF.margin, y, PDF.margin + anchoUtil, y);
+  y += ANEXO.gap;
+
+  const anchoCol = (anchoUtil - ANEXO.gap * (ANEXO.cols - 1)) / ANEXO.cols;
+  const anchoFotoPx = Math.round(anchoCol * 8);            // ~200 dpi
+  const altoFotoPx = Math.round(ANEXO.altoFoto * 8);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(71, 85, 105);
+
+  for (let i = 0; i < items.length; i += ANEXO.cols) {
+    const fila = items.slice(i, i + ANEXO.cols);
+    const alturaFila = ANEXO.altoFoto + ANEXO.altoPie + ANEXO.padding;
+
+    // La fila entera entra o pasa a la página siguiente. Nunca se parte.
+    if (y + alturaFila > PDF.pageH - PDF.margin) {
+      doc.addPage();
+      y = PDF.margin;
+    }
+
+    for (let j = 0; j < fila.length; j++) {
+      const x = PDF.margin + j * (anchoCol + ANEXO.gap);
+      const img = await cargarImagen(fila[j].src);
+      doc.addImage(recortarCover(img, anchoFotoPx, altoFotoPx), 'JPEG', x, y, anchoCol, ANEXO.altoFoto);
+
+      const lineas = doc.splitTextToSize(fila[j].pie, anchoCol).slice(0, 2);
+      doc.text(lineas, x + anchoCol / 2, y + ANEXO.altoFoto + 4, { align: 'center' });
+    }
+
+    y += alturaFila + ANEXO.gap;
+  }
+}
+
+function leerAnexo() {
+  return [...document.querySelectorAll('#image-appendix .appendix-item')]
+    .map(el => {
+      const img = el.querySelector('img');
+      const pie = el.querySelector('p');
+      return img && img.src ? { src: img.src, pie: pie ? pie.innerText.trim() : '' } : null;
+    })
+    .filter(Boolean);
+}
+
+async function converHTMLFileToPDF() {
+  const { jsPDF } = window.jspdf;
+  const source = document.querySelector('#formulario');
+  const anexo = document.getElementById('image-appendix');
+
+  const anchoUtil = PDF.pageW - PDF.margin * 2;
+  const altoUtil = PDF.pageH - PDF.margin * 2;
   const doc = new jsPDF('p', 'mm', [PDF.pageW, PDF.pageH]);
-  const recorte = document.createElement('canvas');
-  const ctx = recorte.getContext('2d');
 
-  paginas.forEach(([desde, hasta], i) => {
-    const alto = hasta - desde;
-    recorte.width = canvas.width;
-    recorte.height = alto;
+  const items = leerAnexo();
 
-    // Fondo blanco: sin esto las zonas transparentes salen negras en el JPEG.
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, recorte.width, recorte.height);
-    ctx.drawImage(canvas, 0, desde, canvas.width, alto, 0, 0, canvas.width, alto);
+  // El anexo se dibuja aparte, así que se oculta antes de rasterizar el cuerpo.
+  const displayPrevio = anexo ? anexo.style.display : null;
+  if (anexo) anexo.style.display = 'none';
+  try {
+    await dibujarCuerpo(doc, source, anchoUtil, altoUtil);
+  } finally {
+    if (anexo) anexo.style.display = displayPrevio;
+  }
 
-    if (i > 0) doc.addPage();
-    doc.addImage(
-      recorte.toDataURL('image/jpeg', 0.92),
-      'JPEG',
-      PDF.margin, PDF.margin,
-      anchoUtil, alto / pxPorMm
-    );
-  });
+  if (items.length) await dibujarAnexo(doc, items, anchoUtil);
 
   return doc;
 }
