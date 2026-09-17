@@ -58,10 +58,12 @@ function medirBloques(source, scale) {
 
 // Dónde terminar una página que empieza en `desde` y no puede pasar de `limite`.
 function buscarCorte(desde, limite, alturaTotal, rangos, cortesForzados) {
-  if (limite >= alturaTotal) return alturaTotal;
-
+  // Los cortes forzados se evaluan primero: aunque todo lo que queda entre en
+  // una pagina, el anexo tiene que empezar en la suya.
   const forzado = cortesForzados.find(c => c > desde + 1 && c <= limite);
   if (forzado) return forzado;
+
+  if (limite >= alturaTotal) return alturaTotal;
 
   // ¿Hay un bloque justo encima de la línea de corte?
   const partido = rangos.find(r => r.top < limite && r.bottom > limite);
@@ -79,22 +81,32 @@ async function converHTMLFileToPDF() {
   const anchoUtil = PDF.pageW - PDF.margin * 2;
   const altoUtil = PDF.pageH - PDF.margin * 2;
 
+  const rectSource = source.getBoundingClientRect();
+  if (!rectSource.width) throw new Error('El formulario no tiene ancho visible.');
+
   const canvas = await html2canvas(source, {
     scale: PDF_SCALE,
     useCORS: true,
     backgroundColor: '#ffffff'
   });
 
+  // La escala real la derivamos del canvas en vez de asumir PDF_SCALE:
+  // html2canvas redondea, y si difiere aunque sea un poco las posiciones de
+  // los bloques quedan corridas respecto del render y los cortes caen mal.
+  const escala = canvas.width / rectSource.width;
+
   const pxPorMm = canvas.width / anchoUtil;
   const altoPaginaPx = altoUtil * pxPorMm;
+  if (!(altoPaginaPx > 0)) throw new Error('No se pudo calcular el alto de página.');
 
-  const { rangos, cortesForzados } = medirBloques(source, PDF_SCALE);
+  const { rangos, cortesForzados } = medirBloques(source, escala);
 
   // Repartir el alto total en páginas, cortando solo en lugares seguros.
   const paginas = [];
   let y = 0;
   while (y < canvas.height - 1) {
     const fin = buscarCorte(y, y + altoPaginaPx, canvas.height, rangos, cortesForzados);
+    if (fin <= y) { paginas.push([y, canvas.height]); break; }  // red de seguridad
     paginas.push([y, fin]);
     y = fin;
   }
