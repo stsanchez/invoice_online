@@ -15,30 +15,138 @@ function mostrarFechaActual() {
 
 mostrarFechaActual();
 
-function converHTMLFileToPDF() {
-  const { jsPDF } = window.jspdf;
-  var doc = new jsPDF('p', 'mm', [210, 297]);
-  var pdfjs = document.querySelector('#formulario');
+// --- Generación del PDF ---------------------------------------------------
+// jsPDF.html() rebana el render en alturas fijas sin mirar el contenido, así
+// que partía filas e imágenes al medio. Acá renderizamos una sola vez y
+// elegimos los cortes: nunca dentro de un bloque que deba quedar entero.
 
-  doc.html(pdfjs, {
+const PDF = { pageW: 210, pageH: 297, margin: 10 };
+const PDF_SCALE = 2;
 
-    callback: function (doc) {
-      var nameFile = prompt("Nombre del archivo: ");
-      doc.setDisplayMode('fullwidth');
-      doc.save(nameFile + ".pdf");
-    },
-    x: 10,
-    y: 10,
-    width: 190,
-    windowWidth: 900
+// Bloques que no se parten. Si uno no entra en lo que queda de página, se baja
+// entero a la siguiente.
+const BLOQUES_ATOMICOS = [
+  'header',
+  '#form',
+  '.tablaCliente thead',
+  '.tablaCliente tbody tr',
+  '#image-appendix h3',
+  '.appendix-item'
+];
+
+function medirBloques(source, scale) {
+  const base = source.getBoundingClientRect().top;
+  const rangos = [];
+
+  source.querySelectorAll(BLOQUES_ATOMICOS.join(',')).forEach(el => {
+    const r = el.getBoundingClientRect();
+    if (r.height <= 0) return;
+    rangos.push({ top: (r.top - base) * scale, bottom: (r.bottom - base) * scale });
   });
+
+  // El anexo arranca en página propia, como pedía el CSS original
+  // (page-break-before, que html2canvas no interpreta).
+  const cortesForzados = [];
+  const anexo = source.querySelector('#image-appendix.has-images');
+  if (anexo) {
+    const r = anexo.getBoundingClientRect();
+    cortesForzados.push((r.top - base) * scale);
+  }
+
+  return { rangos, cortesForzados };
 }
 
-document.getElementById("boton").addEventListener("click", function (e) {
+// Dónde terminar una página que empieza en `desde` y no puede pasar de `limite`.
+function buscarCorte(desde, limite, alturaTotal, rangos, cortesForzados) {
+  if (limite >= alturaTotal) return alturaTotal;
+
+  const forzado = cortesForzados.find(c => c > desde + 1 && c <= limite);
+  if (forzado) return forzado;
+
+  // ¿Hay un bloque justo encima de la línea de corte?
+  const partido = rangos.find(r => r.top < limite && r.bottom > limite);
+  if (!partido) return limite;
+
+  // Si el bloque entero cabe en una página, lo bajamos completo a la siguiente.
+  // Si es más alto que una página no hay nada que hacer: se parte igual.
+  return partido.top > desde + 1 ? partido.top : limite;
+}
+
+async function converHTMLFileToPDF() {
+  const { jsPDF } = window.jspdf;
+  const source = document.querySelector('#formulario');
+
+  const anchoUtil = PDF.pageW - PDF.margin * 2;
+  const altoUtil = PDF.pageH - PDF.margin * 2;
+
+  const canvas = await html2canvas(source, {
+    scale: PDF_SCALE,
+    useCORS: true,
+    backgroundColor: '#ffffff'
+  });
+
+  const pxPorMm = canvas.width / anchoUtil;
+  const altoPaginaPx = altoUtil * pxPorMm;
+
+  const { rangos, cortesForzados } = medirBloques(source, PDF_SCALE);
+
+  // Repartir el alto total en páginas, cortando solo en lugares seguros.
+  const paginas = [];
+  let y = 0;
+  while (y < canvas.height - 1) {
+    const fin = buscarCorte(y, y + altoPaginaPx, canvas.height, rangos, cortesForzados);
+    paginas.push([y, fin]);
+    y = fin;
+  }
+
+  const doc = new jsPDF('p', 'mm', [PDF.pageW, PDF.pageH]);
+  const recorte = document.createElement('canvas');
+  const ctx = recorte.getContext('2d');
+
+  paginas.forEach(([desde, hasta], i) => {
+    const alto = hasta - desde;
+    recorte.width = canvas.width;
+    recorte.height = alto;
+
+    // Fondo blanco: sin esto las zonas transparentes salen negras en el JPEG.
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, recorte.width, recorte.height);
+    ctx.drawImage(canvas, 0, desde, canvas.width, alto, 0, 0, canvas.width, alto);
+
+    if (i > 0) doc.addPage();
+    doc.addImage(
+      recorte.toDataURL('image/jpeg', 0.92),
+      'JPEG',
+      PDF.margin, PDF.margin,
+      anchoUtil, alto / pxPorMm
+    );
+  });
+
+  return doc;
+}
+
+document.getElementById("boton").addEventListener("click", async function (e) {
   e.preventDefault();
-  this.style.display = 'none';
-  converHTMLFileToPDF();
-  this.style.display = 'block';
+
+  const nombre = prompt("Nombre del archivo: ");
+  if (nombre === null) return;          // cancelado: antes generaba "null.pdf"
+  const limpio = nombre.trim() || 'presupuesto';
+
+  const textoOriginal = this.textContent;
+  this.disabled = true;
+  this.textContent = 'Generando...';
+
+  try {
+    const doc = await converHTMLFileToPDF();
+    doc.setDisplayMode('fullwidth');
+    doc.save(limpio + ".pdf");
+  } catch (error) {
+    console.error('Error generando el PDF:', error);
+    alert(`No se pudo generar el PDF.\n\n${error.message}`);
+  } finally {
+    this.disabled = false;
+    this.textContent = textoOriginal;
+  }
 });
 
 var tabla = document.getElementById('miTabla');
