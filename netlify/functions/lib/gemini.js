@@ -10,6 +10,12 @@ const MODEL = MODELS[0];
 // Códigos donde reintentar con el siguiente modelo tiene sentido (capacidad, no input).
 const RETRYABLE = [429, 500, 502, 503, 504];
 
+// Presupuesto total de la request. El gateway de Netlify corta la respuesta y
+// devuelve un 504 sin cuerpo, que al usuario no le dice nada. Preferimos cortar
+// nosotros antes y responder un error entendible.
+const TOTAL_BUDGET_MS = 20000;
+const ATTEMPT_MAX_MS = 8000;
+
 const REDACCION_RULES =
     'Eres un asistente experto en redacción técnica y profesional para presupuestos y facturas.\n' +
     'REGLAS:\n' +
@@ -53,15 +59,18 @@ async function generate(parts, systemInstruction) {
     };
 
     let lastError;
+    const startedAt = Date.now();
 
     for (const model of MODELS) {
+        const remaining = TOTAL_BUDGET_MS - (Date.now() - startedAt);
+        // Sin tiempo para otro intento con sentido: cortamos acá.
+        if (remaining < 2000) break;
+
         let response;
         try {
             response = await axios.post(`${API_BASE}/${model}:generateContent`, body, {
                 headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-                // 3 modelos x 15s = 45s peor caso, por debajo del limite de 60s
-                // de las funciones sincronas de Netlify.
-                timeout: 15000
+                timeout: Math.min(ATTEMPT_MAX_MS, remaining)
             });
         } catch (error) {
             const status = error.response ? error.response.status : 0;
@@ -98,7 +107,13 @@ async function generate(parts, systemInstruction) {
         return text;
     }
 
-    throw lastError || new GeminiError('Ningún modelo de Gemini respondió.', 502);
+    // Solo se llega acá agotando el presupuesto o con todos los modelos caídos,
+    // pero conservamos el motivo real para no ocultar una causa distinta.
+    throw new GeminiError(
+        'El servicio de IA está saturado en este momento. Probá de nuevo en unos segundos.' +
+        (lastError ? ` (${lastError.message})` : ''),
+        503
+    );
 }
 
 async function improveText(text) {
