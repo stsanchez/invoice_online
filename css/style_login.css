@@ -24,6 +24,8 @@ body {
   justify-content: center;
   margin: 0;
   padding: 20px;
+  padding-top: calc(20px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
 }
 
 .container {
@@ -58,7 +60,8 @@ form {
 input[type="text"],
 input[type="password"] {
   width: 100%;
-  padding: 0.75rem 1rem;
+  font-size: 16px;                   /* evita el zoom automatico de iOS */
+  padding: 0.85rem 1rem;
   border: 1px solid var(--input-border);
   border-radius: var(--radius);
   font-size: 1rem;
@@ -70,7 +73,7 @@ input:focus {
   outline: none;
   border-color: var(--primary-color);
   background-color: #fff;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  box-shadow: 0 0 0 3px rgba(169, 50, 38, 0.12);
 }
 
 button {
@@ -87,7 +90,7 @@ button {
 }
 
 button:hover {
-  background-color: #1d4ed8;
+  background-color: #922b21;
   transform: translateY(-1px);
 }
 

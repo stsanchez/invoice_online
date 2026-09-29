@@ -109,6 +109,14 @@ h4 {
   color: var(--text-secondary);
 }
 
+/* Línea de fecha: antes quedaba pegada al borde de la tarjeta. */
+.fecha-linea {
+  display: flex;
+  gap: 0.4rem;
+  align-items: baseline;
+  padding: 1rem 2rem 0;
+}
+
 /* Date Display */
 .date-container {
   display: flex;
@@ -163,7 +171,7 @@ input[type="text"] {
 input[type="text"]:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  box-shadow: 0 0 0 3px rgba(169, 50, 38, 0.12);
 }
 
 input.myInput {
@@ -171,6 +179,16 @@ input.myInput {
   /* Slightly distinct for read-only feel if needed, but keeping editable */
 }
 
+
+/* Detalles de la orden de trabajo */
+#campoGrande {
+  font-family: var(--font-family);
+  font-size: 16px;                   /* evita el zoom automatico de iOS */
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  line-height: 1.5;
+}
 
 /* Main Data Table */
 .tablaCliente {
@@ -201,6 +219,13 @@ input.myInput {
 
 .tablaCliente tr:last-child td {
   border-bottom: none;
+}
+
+/* Texto de las descripciones: una cadena larga sin espacios (una referencia,
+   un codigo) no cortaba sola y empujaba la tabla a lo ancho. */
+.description-cell {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* Currency/Numbers alignment */
@@ -471,32 +496,301 @@ footer {
 }
 
 
-/* Responsive */
+/* Responsive ---------------------------------------------------------------
+
+   La app se usa sobre todo desde el celular. En pantallas chicas la tabla deja
+   de ser tabla: cada item pasa a ser una tarjeta apilada. Antes se resolvia con
+   overflow-x y habia que arrastrar de costado para ver la descripcion, y el PDF
+   generado desde el telefono recortaba lo que sobresalia.
+
+   El PDF no se ve afectado: se rasteriza con ancho de escritorio (ver
+   dibujarCuerpo en js/main.js), asi que el cliente siempre recibe el formato
+   clasico de tabla. */
+
 @media screen and (max-width: 640px) {
+  #container {
+    margin: 0.5rem auto 6rem;          /* 6rem: espacio para la barra fija */
+    padding: 0 0.5rem;
+  }
+
+  /* --- Encabezado --- */
   header {
     flex-direction: column;
     text-align: center;
-    gap: 1rem;
+    gap: 0.75rem;
+    padding: 1.25rem 1rem;
   }
 
   .me {
     text-align: center;
+    font-size: 0.8rem;
+  }
+
+  .me p:first-child {
+    font-size: 1rem;
   }
 
   #imagen {
-    float: none !important;
-    /* Override inline styles */
+    float: none !important;            /* pisa los estilos inline */
+    width: 72px;
     margin: 0 auto;
     display: block;
+    order: -1;                         /* el logo primero, como en una app */
   }
 
-  .tablaCliente {
+  .fecha-linea {
+    padding: 0.75rem 1rem 0;
+    font-size: 0.85rem;
+  }
+
+  h1 {
+    font-size: 1.35rem;
+    padding-bottom: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  /* --- Datos del cliente: etiqueta arriba, campo abajo --- */
+  #form {
+    padding: 1rem;
+  }
+
+  #form table,
+  #form tbody,
+  #form tr,
+  #form td {
     display: block;
-    overflow-x: auto;
+    width: 100%;
+  }
+
+  #form tr {
+    margin-bottom: 0.75rem;
+  }
+
+  #form td.w100,
+  #form td:first-child {
+    width: 100%;
+    margin-bottom: 0.25rem;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  #form input[type="text"] {
+    width: 100% !important;            /* hay anchos fijos por inline style */
+  }
+
+  /* --- Items: cada fila es una tarjeta --- */
+  .tablaCliente {
+    border: none;
+    margin-top: 0;
+  }
+
+  .tablaCliente thead {
+    display: none;                     /* los encabezados pasan a ser etiquetas */
+  }
+
+  .tablaCliente,
+  .tablaCliente tbody,
+  .tablaCliente tr,
+  .tablaCliente td {
+    display: block;
+    width: 100%;
+  }
+
+  #miTabla tr {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+    background: var(--card-bg);
+    box-shadow: var(--shadow-sm);
+  }
+
+  #miTabla td {
+    border: none;
+    padding: 0;
+  }
+
+  .mic-cell,
+  .description-cell {
+    grid-column: 1 / -1;               /* ocupan el ancho completo */
+  }
+
+  .mic-cell {
+    width: auto;
+    text-align: left;
+  }
+
+  .cell-actions {
+    justify-content: flex-start;
+    gap: 0.5rem;
+  }
+
+  /* Objetivos tactiles: 28px era chico para el dedo. */
+  .mic-btn,
+  .magic-btn,
+  .clip-btn {
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--border-color);
+    background: #f8fafc;
+  }
+
+  .mic-btn svg,
+  .magic-btn svg,
+  .clip-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .description-cell {
+    font-size: 16px;                   /* evita el zoom automatico de iOS */
+    min-height: 3rem;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    background: #fff;
+  }
+
+  .description-cell:empty::before {
+    content: 'Descripción del trabajo';
+    color: #94a3b8;
+  }
+
+  /* Cantidad / precio / total, con su etiqueta arriba */
+  #miTabla .amount,
+  #miTabla .rate,
+  #miTabla .sum {
+    font-size: 16px;
+    text-align: left;
+    padding: 0.4rem 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    background: #fff;
+    min-height: 2.5rem;
+  }
+
+  #miTabla .sum {
+    background: #f8fafc;
+    font-weight: 700;
+  }
+
+  #miTabla .amount::before,
+  #miTabla .rate::before,
+  #miTabla .sum::before {
+    display: block;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+    font-family: var(--font-family);
+    margin-bottom: 0.15rem;
+  }
+
+  #miTabla .amount::before { content: 'Cantidad'; }
+  #miTabla .rate::before   { content: 'P. unitario'; }
+  #miTabla .sum::before    { content: 'Total'; }
+
+  /* --- Total general --- */
+  #trTotal td {
+    padding: 1rem;
+    border-radius: var(--radius);
+  }
+
+  #total {
+    font-size: 1.05rem;
+  }
+
+  #total_price {
+    font-size: 1.35rem;
+  }
+
+  /* --- Acciones fijas abajo, como una app --- */
+  .form-footer {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 900;
+    display: flex;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0.6rem 0.75rem;
+    padding-bottom: calc(0.6rem + env(safe-area-inset-bottom, 0px));
+    background: var(--card-bg);
+    border-top: 1px solid var(--border-color);
+    box-shadow: 0 -4px 12px rgb(0 0 0 / 0.08);
+  }
+
+  .form-footer .actions {
+    flex: 1;
+  }
+
+  #agregarFila {
+    flex: 1;
+    margin-top: 0;
+    padding: 0.85rem 0.5rem;
+  }
+
+  #boton {
+    width: 100%;
+    padding: 0.85rem 0.5rem;
+  }
+
+  /* --- Sesion --- */
+  #logout-btn {
+    position: static;
+    width: calc(100% - 1rem);
+    margin: 0.5rem auto 0;
+    justify-content: center;
+    padding: 0.6rem;
+  }
+
+  /* --- Anexo --- */
+  .appendix-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .appendix-item img {
+    height: 120px;
+  }
+
+  .appendix-item p {
+    font-size: 0.75rem;
   }
 
   input[type="text"] {
-    font-size: 16px;
-    /* Prevent zoom on iOS */
+    font-size: 16px;                   /* evita el zoom automatico de iOS */
+  }
+
+  footer {
+    padding: 1rem;
+  }
+}
+
+/* Durante la generación del PDF el clon se maqueta como escritorio, pero
+   html2canvas lee los pseudo-elementos del DOM vivo (que en el celular está en
+   modo tarjeta), así que las etiquetas mobile se colaban en el PDF. Se apagan
+   mientras dura el render. */
+html.generando-pdf #miTabla .amount::before,
+html.generando-pdf #miTabla .rate::before,
+html.generando-pdf #miTabla .sum::before,
+html.generando-pdf .description-cell:empty::before {
+  content: none !important;
+}
+
+/* Telefonos angostos */
+@media screen and (max-width: 360px) {
+  #miTabla tr {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  #miTabla .sum {
+    grid-column: 1 / -1;
   }
 }

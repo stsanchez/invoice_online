@@ -24,6 +24,12 @@ mostrarFechaActual();
 const PDF = { pageW: 210, pageH: 297, margin: 10 };
 const PDF_SCALE = 2;
 
+// El PDF se rasteriza siempre con ancho de escritorio: en el celular la tabla
+// se muestra como tarjetas apiladas, pero el presupuesto que recibe el cliente
+// tiene que salir siempre con el formato clásico, sin importar desde qué
+// dispositivo se genere.
+const PDF_ANCHO_RENDER = 1000;
+
 // Anexo: grilla de 3 columnas, medidas en mm.
 const ANEXO = { cols: 3, gap: 5, altoFoto: 45, altoPie: 9, padding: 2 };
 
@@ -99,6 +105,7 @@ async function dibujarCuerpo(doc, source, anchoUtil, altoUtil) {
     scale: PDF_SCALE,
     useCORS: true,
     backgroundColor: '#ffffff',
+    windowWidth: PDF_ANCHO_RENDER,     // el clon se maqueta como escritorio
     onclone: (doc, el) => { medido = medirBloques(el); }
   });
 
@@ -192,9 +199,11 @@ async function converHTMLFileToPDF() {
   // El anexo se dibuja aparte, así que se oculta antes de rasterizar el cuerpo.
   const displayPrevio = anexo ? anexo.style.display : null;
   if (anexo) anexo.style.display = 'none';
+  document.documentElement.classList.add('generando-pdf');
   try {
     await dibujarCuerpo(doc, source, anchoUtil, altoUtil);
   } finally {
+    document.documentElement.classList.remove('generando-pdf');
     if (anexo) anexo.style.display = displayPrevio;
   }
 
